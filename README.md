@@ -3,6 +3,24 @@
 以 Arduino UNO R4 WiFi 搭配 AD8232 單導程心電模組，做即時心電訊號顯示、錄製，
 以及心率變異度（HRV）分析與 PDF 報告產生。
 
+## 分析輸出範例
+
+<p align="center">
+  <img src="docs/poincare.png" width="560" alt="龐加萊圖">
+</p>
+
+一段 5 分鐘靜息記錄的龐加萊圖。每個點代表一組相鄰的 RR 區間 `(RR_n, RR_n+1)`，
+散布沿對角線拉長、垂直方向較窄，是正常竇性心律的典型形態。
+
+紅色橢圓的兩個半軸即為兩項標準指標：**SD1** 是垂直於對角線的散布寬度，代表逐拍之間的
+短期變異（與 RMSSD 等價）；**SD2** 是沿對角線方向的散布長度，代表長期變異。
+
+重現方式：
+
+```bash
+python hrv_analysis.py --csv rec.csv --poincare docs/poincare.png
+```
+
 ## 硬體
 
 | 項目 | 內容 |
@@ -77,6 +95,7 @@ HRV 分析：
 ```bash
 python hrv_analysis.py --record 300 --csv rec.csv   # 錄製後直接分析
 python hrv_analysis.py --csv rec.csv                # 分析既有檔案
+python hrv_analysis.py --csv rec.csv --poincare p.png  # 另外輸出單張龐加萊圖
 ```
 
 PDF 報告：

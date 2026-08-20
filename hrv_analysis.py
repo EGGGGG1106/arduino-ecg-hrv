@@ -218,6 +218,55 @@ def freq_domain(rr, good, t_beat):
 # figure
 # --------------------------------------------------------------------------
 
+def make_poincare(rr, good, td, out_path, source):
+    """單獨輸出一張龐加萊圖，供 README 或簡報使用。"""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Ellipse
+
+    pairs = np.array([(rr[i], rr[i + 1]) for i in range(rr.size - 1)
+                      if good[i] and good[i + 1]])
+
+    fig, ax = plt.subplots(figsize=(6.4, 6.0))
+    fig.patch.set_facecolor("white")
+    ax.scatter(pairs[:, 0], pairs[:, 1], s=16, alpha=0.55,
+               color="#1f77b4", edgecolors="none")
+    c = pairs.mean(axis=0)
+    ax.add_patch(Ellipse(c, 2 * td["sd2"], 2 * td["sd1"], angle=45, fill=False,
+                         edgecolor="#d62728", linewidth=1.8, zorder=5))
+    lo, hi = pairs.min() - 40, pairs.max() + 40
+    ax.plot([lo, hi], [lo, hi], color="#999999", lw=0.8, ls="--")
+
+    d = np.array([np.cos(np.pi / 4), np.sin(np.pi / 4)])
+    n = np.array([-d[1], d[0]])
+    ax.annotate("", c + d * td["sd2"], c,
+                arrowprops=dict(arrowstyle="->", color="#d62728", lw=1.7))
+    ax.annotate("", c + n * td["sd1"], c,
+                arrowprops=dict(arrowstyle="->", color="#2ca02c", lw=1.7))
+    ax.text(*(c + d * td["sd2"] * 1.05), f"SD2 = {td['sd2']:.1f} ms",
+            color="#d62728", fontsize=10, fontweight="bold")
+    ax.text(*(c + n * td["sd1"] * 1.35), f"SD1 = {td['sd1']:.1f} ms",
+            color="#2ca02c", fontsize=10, fontweight="bold", ha="right")
+
+    ax.set_xlim(lo, hi); ax.set_ylim(lo, hi); ax.set_aspect("equal")
+    ax.set_xlabel("RR$_n$ (ms)", fontsize=11)
+    ax.set_ylabel("RR$_{n+1}$ (ms)", fontsize=11)
+    ax.set_title("Poincare plot", fontsize=13, fontweight="bold")
+    ax.grid(alpha=0.25)
+
+    caption = (f"{len(pairs)} beat pairs   ·   "
+               f"mean HR {td['mean_hr']:.1f} bpm   ·   "
+               f"SDNN {td['sdnn']:.1f} ms   ·   "
+               f"RMSSD {td['rmssd']:.1f} ms   ·   "
+               f"SD1/SD2 {td['sd_ratio']:.3f}")
+    fig.text(0.5, 0.015, caption, ha="center", fontsize=8.5, color="#555555")
+
+    fig.tight_layout(rect=(0, 0.035, 1, 1))
+    fig.savefig(out_path, dpi=140, facecolor="white")
+    plt.close(fig)
+
+
 def make_figure(rr, good, t_beat, td, fd, out_path, source):
     import matplotlib
     matplotlib.use("Agg")
@@ -328,7 +377,7 @@ def make_figure(rr, good, t_beat, td, fd, out_path, source):
 
 # --------------------------------------------------------------------------
 
-def analyse(path, fs, plot_path):
+def analyse(path, fs, plot_path, poincare_path=None):
     adc, filt, lead = load(path, fs)
     dur = adc.size / fs
     print(f"\nLoaded {adc.size} samples ({dur:.1f}s), "
@@ -371,6 +420,10 @@ def analyse(path, fs, plot_path):
 
     make_figure(rr, good, t_beat, td, fd, plot_path, path)
     print(f"\nFigure written to {plot_path}")
+    if poincare_path:
+        os.makedirs(os.path.dirname(os.path.abspath(poincare_path)), exist_ok=True)
+        make_poincare(rr, good, td, poincare_path, path)
+        print(f"Poincare plot written to {poincare_path}")
     return td, fd
 
 
@@ -380,6 +433,8 @@ def main():
     ap.add_argument("--record", type=float, metavar="SECONDS",
                     help="record this many seconds first (300 = the standard 5 min)")
     ap.add_argument("--plot", metavar="PATH", help="figure path (default: <csv>_hrv.png)")
+    ap.add_argument("--poincare", metavar="PATH",
+                    help="also write a standalone Poincare plot to this path")
     ap.add_argument("--fs", type=float, default=500.0, help="sample rate in Hz")
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--port", help="serial port (default: auto-detect)")
@@ -391,7 +446,7 @@ def main():
         sys.exit(f"{args.csv} does not exist. Use --record to make a recording first.")
 
     plot_path = args.plot or os.path.splitext(args.csv)[0] + "_hrv.png"
-    analyse(args.csv, args.fs, plot_path)
+    analyse(args.csv, args.fs, plot_path, args.poincare)
 
 
 if __name__ == "__main__":
