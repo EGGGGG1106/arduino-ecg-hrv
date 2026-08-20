@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 作業系統
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 編輯器
+.vscode/
+.idea/
